@@ -10,18 +10,19 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
-        Schema::create('paniers', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
-    }
+{
+    Schema::table('paniers', function (Blueprint $table) {
+        $table->foreignId('commande_id')->nullable()->change();
+    });
+}
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('paniers');
+        Schema::table('paniers', function (Blueprint $table) {
+            //
+        });
     }
 };

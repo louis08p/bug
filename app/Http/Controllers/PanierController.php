@@ -3,63 +3,98 @@
 namespace App\Http\Controllers;
 
 use App\Models\Panier;
+use App\Models\Burger;
+use App\Models\Commande;
+use App\Models\Facture;
+use App\Models\DetailsFacture;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PanierController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+       
+    $userId = Auth::id();
+    $paniers = \App\Models\Panier::where('user_id', $userId)->with('burger')->get();
+    return view('panier.index', compact('paniers'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(Request $request, $burger_id)
     {
-        //
+        $panier = Panier::where('user_id', Auth::id())
+                        ->where('burger_id', $burger_id)
+                        ->first();
+
+        if ($panier) {
+            $panier->quantite += 1;
+            $panier->save();
+        } else {
+            $burger = Burger::findOrFail($burger_id);
+
+            Panier::create([
+                'user_id' => Auth::id(),
+                'burger_id' => $burger_id,
+                'quantite' => 1,
+                'prix_unitaire' => $burger->prix, // <= ici on récupère le prix du burger
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Burger ajouté au panier');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+
+
+    public function destroy($id)
     {
-        //
+        $item = \App\Models\Panier::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        $item->delete();
+
+        return redirect()->back()->with('success', 'Item supprimé du panier');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Panier $panier)
+    public function validerPanier()
     {
-        //
-    }
+        $userId = Auth::id();
+        $paniers = Panier::where('user_id', $userId)->get();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Panier $panier)
-    {
-        //
-    }
+        if ($paniers->isEmpty()) {
+            return redirect()->back()->with('error', 'Votre panier est vide.');
+        }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Panier $panier)
-    {
-        //
-    }
+        DB::beginTransaction();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Panier $panier)
-    {
-        //
+        try {
+            $facture = Facture::create([
+                'user_id' => $userId,
+                'date_facture' => now(),
+            ]);
+
+            $commande = Commande::create([
+                'user_id' => $userId,
+                'facture_id' => $facture->id,
+                'status' => 'En attente',
+            ]);
+
+            foreach ($paniers as $item) {
+                DetailsFacture::create([
+                    'facture_id' => $facture->id,
+                    'burger_id' => $item->burger_id,
+                    'quantite' => $item->quantite,
+                    'prix_unitaire' => $item->burger->prix,
+                ]);
+            }
+
+            // Vider le panier
+            Panier::where('user_id', $userId)->delete();
+
+            DB::commit();
+
+            return redirect()->route('commande.index')->with('success', 'Commande validée avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Erreur lors de la validation de la commande.');
+        }
     }
 }

@@ -13,6 +13,14 @@
         background-color: #2c3e50;
     }
 
+    .btn-icon {
+        padding: 5px 8px;
+        font-size: 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     .btn-primary {
         background-color: #2980b9;
         border: none;
@@ -31,97 +39,79 @@
         background-color: #e74c3c;
     }
 
-    .btn-warning {
-        background-color: #f39c12;
-        border: none;
-    }
-
-    .btn-warning:hover {
-        background-color: #e67e22;
-    }
-
-    .card-img-top {
-        height: 200px;
-        object-fit: cover;
-    }
-
-    .card-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-    }
-
-    .card-body {
-        text-align: center;
-    }
-
-    .btn-commander {
-        background-color: #f39c12;
-        border: none;
-        color: #fff;
-        font-weight: bold;
-    }
-
-    .btn-commander:hover {
-        background-color: #e67e22;
-    }
-
     .alert {
         font-size: 14px;
     }
+
+    .img-thumbnail {
+        width: 60px;
+        height: auto;
+        object-fit: cover;
+    }
 </style>
 
-{{-- resources/views/burger/burger.blade.php --}}
-@extends('layouts.app')
-@section('content')
-<div class="container py-4">
-    @if(Auth::check() && Auth::user()->role === 'gestionnaire')
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="text-warning">Liste des Burgers</h2>
-            <a href="{{ route('add') }}" class="btn btn-warning fw-bold text-dark">➕ Ajouter un Burger</a>
-        </div>
+<div class="container py-5">
+    <h2 class="mb-4 text-center text-primary">🍔 Liste des Burgers</h2>
+
+    @if(session('message'))
+        <div class="alert alert-success">{{ session('message') }}</div>
+    @endif
+    @if(session('messageDelete'))
+        <div class="alert alert-warning">{{ session('messageDelete') }}</div>
     @endif
 
-    @if(session('message'))<div class="alert alert-success">{{ session('message') }}</div>@endif
-    @if(session('messageDelete'))<div class="alert alert-danger">{{ session('messageDelete') }}</div>@endif
-
-    <div class="table-responsive">
-        <table class="table table-dark table-bordered table-hover align-middle text-center">
-            <thead class="table-warning text-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Nom</th>
-                    <th>Prix</th>
-                    <th>Image</th>
-                    <th>Description</th>
-                    <th>Stock</th>
-                    @if(Auth::user()->role === 'gestionnaire')<th>Actions</th>@endif
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($burgers as $b)
-                    @if(!$b->archive)
-                        <tr>
-                            <td>{{ $b->id }}</td>
-                            <td>{{ $b->nom }}</td>
-                            <td>{{ $b->prix }} FCFA</td>
-                            <td><img src="{{ asset('storage/' . $b->image) }}" width="60"></td>
-                            <td>{{ $b->description }}</td>
-                            <td>{{ $b->stock }}</td>
-                            @if(Auth::user()->role === 'gestionnaire')
-                                <td>
-                                    <a href="{{ route('editBurger', $b->id) }}" class="btn btn-sm btn-primary">✏️</a>
-                                    <form action="{{ route('archiveBurger', $b->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        @method('PUT')
-                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Archiver ce burger ?')">🗑️</button>
-                                    </form>
-                                </td>
-                            @endif
-                        </tr>
-                    @endif
-                @endforeach
-            </tbody>
-        </table>
+    <div class="text-end mb-3">
+        <a href="{{ route('burgers.create') }}" class="btn btn-success">➕ Ajouter un Burger</a>
     </div>
+
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Nom</th>
+                <th>Prix</th>
+                <th>Description</th>
+                <th>Stock</th>
+                <th>Image</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @forelse ($burgers as $burger)
+            <tr>
+                <td>{{ $burger->nom }}</td>
+                <td>{{ number_format($burger->prix, 0, ',', ' ') }} FCFA</td>
+                <td>{{ $burger->description }}</td>
+                <td>{{ $burger->stock }}</td>
+                <td>
+                    @if($burger->image)
+                        <img src="{{ asset('storage/' . $burger->image) }}" alt="image" class="img-thumbnail">
+                    @else
+                        N/A
+                    @endif
+                </td>
+                <td>
+                    <!-- Icône Modifier -->
+                    <a href="{{ route('burgers.edit', $burger->id) }}" class="btn btn-sm btn-primary btn-icon" title="Modifier">
+                        ✏️
+                    </a>
+
+                    <!-- Bouton Archiver -->
+                    <form action="{{ route('archiveBurger', $burger->id) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Archiver ce burger ?');">
+                        @csrf
+                        @method('PUT')
+                        <button type="submit" class="btn btn-sm btn-danger btn-icon" title="Archiver">
+                            🗑️
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="6" class="text-center">Aucun burger disponible.</td>
+            </tr>
+        @endforelse
+        </tbody>
+    </table>
 </div>
 @endsection
