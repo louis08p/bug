@@ -36,7 +36,7 @@ class AuthenticatedSessionController extends Controller
         if ($user->role === 'gestionnaire') {
             return redirect()->route('dashboard');
         } elseif ($user->role === 'client') {
-            return redirect()->route('burgers.index');
+            return redirect()->route('menu');
         }
 
         // Redirection par défaut si aucun rôle ne correspond

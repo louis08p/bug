@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Commande;
 use App\Models\Panier;
 use App\Models\Facture;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -12,12 +13,18 @@ use Illuminate\Support\Facades\DB;
 class CommandeController extends Controller
 {
     /**
-     * Affiche les commandes du client connecté.
+     * Lister toutes les commandes (Gestionnaire ou Client selon rôle).
      */
     public function index()
     {
         $user = Auth::user();
-        $commandes = Commande::where('user_id', $user->id)->with('facture')->latest()->get();
+
+        if ($user->role === 'gestionnaire') {
+            $commandes = Commande::with('facture', 'user')->latest()->get();
+        } else {
+            $commandes = Commande::where('user_id', $user->id)->with('facture')->latest()->get();
+        }
+
         return view('commande.index', compact('commandes'));
     }
 
@@ -46,10 +53,10 @@ class CommandeController extends Controller
         DB::beginTransaction();
         try {
             // Création de la commande
-            $commande = new Commande();
-            $commande->user_id = $user->id;
-            $commande->status = 'en attente';
-            $commande->save();
+            $commande = Commande::create([
+                'user_id' => $user->id,
+                'status' => 'en attente',
+            ]);
 
             // Total pour la facture
             $total = 0;
@@ -61,13 +68,15 @@ class CommandeController extends Controller
             }
 
             // Création de la facture
-            $facture = new Facture();
-            $facture->commande_id = $commande->id;
-            $facture->montant = $total;
-            $facture->save();
+            Facture::create([
+                'user_id' => $user->id,
+                'commande_id' => $commande->id,
+                'montant_total' => $total,
+                'date_facture' => null
+            ]);
 
             // Vider le panier
-            Panier::where('user_id', $user->id)->delete();
+            Panier::where('user_id', $user->id)->whereNull('commande_id')->delete();
 
             DB::commit();
 
@@ -80,15 +89,91 @@ class CommandeController extends Controller
     }
 
     /**
-     * Affiche les détails d’une commande (y compris facture et contenu).
+     * Affiche les détails d’une commande.
      */
-    public function show(Commande $commande)
+        public function show(Commande $commande)
     {
-        $this->authorize('view', $commande); // Facultatif si tu veux vérifier le propriétaire
-
-        $paniers = Panier::where('commande_id', $commande->id)->with('burger')->get();
-        $facture = $commande->facture;
-
-        return view('commande.show', compact('commande', 'paniers', 'facture'));
+        $commande->load('facture', 'panier.burger', 'user');
+        return view('commande.show', compact('commande'));
     }
+
+    /**
+     * Modifier le statut de la commande.
+     */
+    public function updateStatus(Request $request, $id)
+    {
+    $commande = Commande::with('facture', 'panier.burger', 'user')->findOrFail($id);
+    $status = $request->input('status');
+
+    $commande->status = $status;
+    $commande->save();
+
+    // Si commande devient Prête → envoyer email avec facture PDF
+    if ($status === 'Prête') {
+        $facture = $commande->facture;
+        $paniers = $commande->panier;
+
+        Mail::to($commande->user->email)->send(new FactureReadyMail($facture, $commande, $paniers));
+    }
+
+    // Si commande devient Payée → enregistrer la date de paiement
+    if ($status === 'Payée') {
+        $commande->facture->update([
+            'date_facture' => now(),
+        ]);
+    }
+
+    return back()->with('success', 'Statut mis à jour.');
+    }
+
+
+    /**
+     * Enregistrer le paiement de la commande.
+     */
+    public function payer(Request $request, $id)
+    {
+        $commande = Commande::with('facture')->findOrFail($id);
+
+        if ($commande->facture->date_facture != null) {
+            return back()->with('error', 'Cette commande a déjà été payée.');
+        }
+
+        $commande->facture->update([
+            'date_facture' => now()
+        ]);
+
+        $commande->status = 'payée';
+        $commande->save();
+
+        return back()->with('success', 'Paiement enregistré.');
+    }
+
+    /**
+     * Annuler la commande.
+     */
+    public function annuler($id)
+    {
+        $commande = Commande::findOrFail($id);
+        $commande->status = 'annulée';
+        $commande->save();
+
+        return back()->with('success', 'Commande annulée.');
+    }
+    public function enregistrerPaiement($id)
+{
+    $commande = Commande::with('facture')->findOrFail($id);
+
+    // Vérifie si déjà payé
+    if ($commande->facture->date_paiement !== null) {
+        return back()->with('error', 'La commande a déjà été payée.');
+    }
+
+    // Marquer la facture comme payée (espèces)
+    $commande->facture->update([
+        'date_paiement' => now(),
+    ]);
+
+    return back()->with('success', 'Paiement enregistré avec succès.');
+}
+
 }

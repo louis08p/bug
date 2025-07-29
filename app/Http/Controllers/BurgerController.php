@@ -11,32 +11,24 @@ class BurgerController extends Controller
 {
     /**
      * Vue client : liste des burgers (non archivés)
-     */
-    public function indexClient()
+        */
+    public function indexMenu()
     {
-        $burgers = Burger::where('archive', false)->get();
-        return view('burger.index', compact('burgers'));
+        $burgers = Burger::where('archived', false)->get();
+        return view('burger.menu', compact('burgers'));
     }
 
     /**
      * Vue gestionnaire : liste complète avec archivage
      */
-    public function index()
-    {
-        //$burgers = Burger::all();
-        $burgers = Burger::where('archived', false)->get();
-         $user = Auth::user();
-
-    if ($user->role === 'gestionnaire') {
-        return view('burger.burger', compact('burgers'));
-    } elseif ($user->role === 'client') {
-        return view('burger.menu', compact('burgers'));
-    } else {
-        abort(403, 'Accès interdit');
-    }
-       
+  public function index()
+{
+   $burgers = Burger::where('archived', false)->get();
+    return view('burger.burger', compact('burgers'));
+}
+ 
         
-    }
+    
 
     /**
      * Afficher le formulaire d'ajout

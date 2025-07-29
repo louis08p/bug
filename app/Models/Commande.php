@@ -18,5 +18,9 @@ public function user()
 {
     return $this->belongsTo(User::class);
 }
+public function facture() {
+    return $this->hasOne(Facture::class);
+}
+
 
 }

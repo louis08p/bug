@@ -34,7 +34,8 @@ Route::middleware('auth')->group(function () {
     // ========================
     // 👨‍🍳 Routes GESTIONNAIRE
     Route::middleware('role:gestionnaire')->group(function () {
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+       // Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // Statistiques
         Route::get('/stats', [StatController::class, 'index'])->name('stats.index');
@@ -50,6 +51,7 @@ Route::middleware('auth')->group(function () {
 
         /// Commandes 
         Route::get('/commandes', [CommandeController::class, 'index'])->name('commandes.index');
+        Route::put('/commandes/{commande}/payer', [CommandeController::class, 'enregistrerPaiement'])->name('commandes.payer');
         Route::get('/commandes/{commande}', [CommandeController::class, 'show'])->name('commandes.show');
         Route::put('/commandes/{commande}/status', [CommandeController::class, 'updateStatus'])->name('commandes.updateStatus');
         Route::put('/commandes/{commande}/cancel', [CommandeController::class, 'cancel'])->name('commandes.cancel');
@@ -59,8 +61,8 @@ Route::middleware('auth')->group(function () {
     // 🍔 Routes CLIENT
     Route::middleware('role:client')->group(function () {
         // Affichage du menu burger
-        Route::get('/burgers', [BurgerController::class, 'index'])->name('burgers.index')->middleware('auth');
-        Route::get('/menu', [BurgerController::class, 'indexClient'])->name('client.burgers');
+        Route::get('/menu', [BurgerController::class, 'indexMenu'])->name('menu');
+       
 
         // Panier
         Route::get('/panier', [PanierController::class, 'index'])->name('panier.voir');

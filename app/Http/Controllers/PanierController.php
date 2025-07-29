@@ -55,46 +55,49 @@ class PanierController extends Controller
     }
 
     public function validerPanier()
-    {
-        $userId = Auth::id();
-        $paniers = Panier::where('user_id', $userId)->get();
+{
+    $userId = Auth::id();
+    $paniers = Panier::where('user_id', $userId)->whereNull('commande_id')->with('burger')->get();
 
-        if ($paniers->isEmpty()) {
-            return redirect()->back()->with('error', 'Votre panier est vide.');
-        }
-
-        DB::beginTransaction();
-
-        try {
-            $facture = Facture::create([
-                'user_id' => $userId,
-                'date_facture' => now(),
-            ]);
-
-            $commande = Commande::create([
-                'user_id' => $userId,
-                'facture_id' => $facture->id,
-                'status' => 'En attente',
-            ]);
-
-            foreach ($paniers as $item) {
-                DetailsFacture::create([
-                    'facture_id' => $facture->id,
-                    'burger_id' => $item->burger_id,
-                    'quantite' => $item->quantite,
-                    'prix_unitaire' => $item->burger->prix,
-                ]);
-            }
-
-            // Vider le panier
-            Panier::where('user_id', $userId)->delete();
-
-            DB::commit();
-
-            return redirect()->route('commande.index')->with('success', 'Commande validée avec succès.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Erreur lors de la validation de la commande.');
-        }
+    if ($paniers->isEmpty()) {
+        return redirect()->back()->with('error', 'Votre panier est vide.');
     }
+
+    DB::beginTransaction();
+
+    try {
+        // Création de la commande
+        $commande = Commande::create([
+            'user_id' => $userId,
+            'status' => 'En attente',
+        ]);
+
+        // Calcul du montant total de la commande
+        $montantTotal = 0;
+        foreach ($paniers as $item) {
+            $item->commande_id = $commande->id;
+            $item->save();
+
+            $montantTotal += $item->quantite * $item->burger->prix;
+        }
+
+        // Création de la facture liée à la commande
+        $facture = Facture::create([
+            'user_id' => $userId,
+            'commande_id' => $commande->id,
+            'montant_total' => $montantTotal,
+            'date_facture' => now(),
+        ]);
+
+        // Optionnel : Si tu veux supprimer les paniers "non liés", tu peux, mais là on les a déjà liés avec commande_id
+
+        DB::commit();
+
+        return redirect()->route('commandes.index')->with('success', 'Commande validée avec succès.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Erreur lors de la validation de la commande : ' . $e->getMessage());
+    }
+}
+
 }
