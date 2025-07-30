@@ -100,7 +100,7 @@ class CommandeController extends Controller
     /**
      * Modifier le statut de la commande.
      */
-    public function updateStatus(Request $request, $id)
+    public function updatestatut(Request $request, $id)
     {
     $commande = Commande::with('facture', 'panier.burger', 'user')->findOrFail($id);
     $status = $request->input('status');
