@@ -53,7 +53,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/commandes', [CommandeController::class, 'index'])->name('commandes.index');
         Route::put('/commandes/{commande}/payer', [CommandeController::class, 'enregistrerPaiement'])->name('commandes.payer');
         Route::get('/commandes/{commande}', [CommandeController::class, 'show'])->name('commandes.show');
-        Route::put('/commandes/{commande}/status', [CommandeController::class, 'updateStatus'])->name('commandes.updateStatus');
+        Route::put('/commandes/{commande}/statut', [CommandeController::class, 'updatestatut'])->name('commandes.updatestatut');
         Route::put('/commandes/{commande}/cancel', [CommandeController::class, 'cancel'])->name('commandes.cancel');
     });
 

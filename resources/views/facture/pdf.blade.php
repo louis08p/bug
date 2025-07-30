@@ -26,12 +26,12 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($facture->commande->details as $detail)
+            @foreach ($facture->commande->panier as $item)
                 <tr>
-                    <td>{{ $detail->produit->nom }}</td>
-                    <td>{{ $detail->quantite }}</td>
-                    <td>{{ number_format($detail->prix_unitaire, 2) }} FCFA</td>
-                    <td>{{ number_format($detail->quantite * $detail->prix_unitaire, 2) }} FCFA</td>
+                    <td>{{ $item->burger->nom }}</td>
+                    <td>{{ $item->quantite }}</td>
+                    <td>{{ number_format($item->burger->prix, 2) }} FCFA</td>
+                    <td>{{ number_format($item->quantite * $item->burger->prix, 2) }} FCFA</td>
                 </tr>
             @endforeach
         </tbody>

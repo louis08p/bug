@@ -54,7 +54,7 @@ class PanierController extends Controller
         return redirect()->back()->with('success', 'Item supprimé du panier');
     }
 
-    public function validerPanier()
+   public function validerPanier() 
 {
     $userId = Auth::id();
     $paniers = Panier::where('user_id', $userId)->whereNull('commande_id')->with('burger')->get();
@@ -66,19 +66,23 @@ class PanierController extends Controller
     DB::beginTransaction();
 
     try {
-        // Création de la commande
+        // Calcul du montant total AVANT la création de la commande
+        $montantTotal = 0;
+        foreach ($paniers as $item) {
+            $montantTotal += $item->quantite * $item->burger->prix;
+        }
+
+        // Création de la commande avec le total
         $commande = Commande::create([
             'user_id' => $userId,
-            'status' => 'En attente',
+            'statut' => 'en_attente', // ← Changé pour correspondre à la migration
+            'total' => $montantTotal, // ← Ajouté le total requis par la migration
         ]);
 
-        // Calcul du montant total de la commande
-        $montantTotal = 0;
+        // Lier les items du panier à la commande
         foreach ($paniers as $item) {
             $item->commande_id = $commande->id;
             $item->save();
-
-            $montantTotal += $item->quantite * $item->burger->prix;
         }
 
         // Création de la facture liée à la commande
@@ -86,10 +90,8 @@ class PanierController extends Controller
             'user_id' => $userId,
             'commande_id' => $commande->id,
             'montant_total' => $montantTotal,
-            'date_facture' => now(),
+            'date_facture' => null, // ← Changé car la facture n'est pas encore payée
         ]);
-
-        // Optionnel : Si tu veux supprimer les paniers "non liés", tu peux, mais là on les a déjà liés avec commande_id
 
         DB::commit();
 

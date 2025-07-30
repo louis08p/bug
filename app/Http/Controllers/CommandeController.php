@@ -9,6 +9,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\FactureReadyMail;
 
 class CommandeController extends Controller
 {
@@ -35,7 +37,8 @@ class CommandeController extends Controller
     {
         $user = Auth::user();
         $paniers = Panier::where('user_id', $user->id)->get();
-        return view('commande.create', compact('paniers'));
+    return view('commande.create', compact('paniers'));
+        
     }
 
     /**
@@ -55,7 +58,7 @@ class CommandeController extends Controller
             // Création de la commande
             $commande = Commande::create([
                 'user_id' => $user->id,
-                'status' => 'en attente',
+                'statut' => 'en_attente',
             ]);
 
             // Total pour la facture
@@ -76,7 +79,7 @@ class CommandeController extends Controller
             ]);
 
             // Vider le panier
-            Panier::where('user_id', $user->id)->whereNull('commande_id')->delete();
+           // Panier::where('user_id', $user->id)->whereNull('commande_id')->delete();
 
             DB::commit();
 
@@ -101,30 +104,34 @@ class CommandeController extends Controller
      * Modifier le statut de la commande.
      */
     public function updatestatut(Request $request, $id)
-    {
+{
+     $request->validate([
+        'statut' => 'required|in:en_attente,en_preparation,prete,payee',
+    ]);
+    
     $commande = Commande::with('facture', 'panier.burger', 'user')->findOrFail($id);
-    $status = $request->input('status');
+    $statut = $request->input('statut');
 
-    $commande->status = $status;
+    $commande->statut = $statut; // ← Changé de 'statut' à 'statut'
     $commande->save();
 
-    // Si commande devient Prête → envoyer email avec facture PDF
-    if ($status === 'Prête') {
+    // Si commande devient prête → envoyer email avec facture PDF
+    if ($statut === 'prete') { // ← Changé de 'Prête' à 'Prete'
         $facture = $commande->facture;
         $paniers = $commande->panier;
 
         Mail::to($commande->user->email)->send(new FactureReadyMail($facture, $commande, $paniers));
     }
 
-    // Si commande devient Payée → enregistrer la date de paiement
-    if ($status === 'Payée') {
+    // Si commande devient payée → enregistrer la date de paiement
+    if ($statut === 'payee') { // ← Changé de 'Payée' à 'Payee'
         $commande->facture->update([
             'date_facture' => now(),
         ]);
     }
 
     return back()->with('success', 'Statut mis à jour.');
-    }
+}
 
 
     /**
@@ -142,7 +149,7 @@ class CommandeController extends Controller
             'date_facture' => now()
         ]);
 
-        $commande->status = 'payée';
+        $commande->statut = 'payee';
         $commande->save();
 
         return back()->with('success', 'Paiement enregistré.');
@@ -154,7 +161,7 @@ class CommandeController extends Controller
     public function annuler($id)
     {
         $commande = Commande::findOrFail($id);
-        $commande->status = 'annulée';
+        $commande->statut = 'annulée';
         $commande->save();
 
         return back()->with('success', 'Commande annulée.');

@@ -4,7 +4,7 @@
 <div class="container">
     <h3>Détails de la Commande #{{ $commande->id }}</h3>
 
-    <p>Status : <strong>{{ ucfirst($commande->status) }}</strong></p>
+    <p>statut : <strong>{{ ucfirst($commande->statut) }}</strong></p>
     <p>Montant : <strong>{{ $commande->facture->montant_total }} FCFA</strong></p>
 
     <h4>Produits :</h4>
@@ -28,20 +28,20 @@
     </table>
 
     {{-- Formulaire pour changer le statut --}}
-    <form method="POST" action="{{ route('commandes.updateStatus', $commande->id) }}">
+<form method="POST" action="{{ route('commandes.updatestatut', $commande->id) }}">
         @csrf
         @method('PUT')
-        <select name="status" class="form-select mb-2">
-            <option value="En attente" {{ $commande->status == 'En attente' ? 'selected' : '' }}>En attente</option>
-            <option value="En préparation" {{ $commande->status == 'En préparation' ? 'selected' : '' }}>En préparation</option>
-            <option value="Prête" {{ $commande->status == 'Prête' ? 'selected' : '' }}>Prête</option>
-            <option value="Payée" {{ $commande->status == 'Payée' ? 'selected' : '' }}>Payée</option>
+        <select name="statut" class="form-select mb-2">
+            <option value="en_attente" {{ $commande->statut == 'en_attente' ? 'selected' : '' }}>En attente</option>
+            <option value="en_preparation" {{ $commande->statut == 'en_preparation' ? 'selected' : '' }}>En préparation</option>
+            <option value="prete" {{ $commande->statut == 'prete' ? 'selected' : '' }}>Prete</option>
+            <option value="payee" {{ $commande->statut == 'payee' ? 'selected' : '' }}>Payée</option>
         </select>
         <button class="btn btn-primary">Mettre à jour le statut</button>
     </form>
 
     {{-- Paiement --}}
-    @if(is_null($commande->facture->date_paiement) && $commande->status === 'Payée')
+    @if(is_null($commande->facture->date_paiement) && $commande->statut === 'Payee')
     <form method="POST" action="{{ route('commandes.payer', $commande->id) }}">
         @csrf
         @method('PUT')
@@ -52,7 +52,7 @@
     @endif
 
     {{-- Annulation --}}
-    @if($commande->status !== 'Annulée' && $commande->status !== 'Payée')
+    @if($commande->statut !== 'Annulée' && $commande->statut !== 'Payee')
         <form method="POST" action="{{ route('commandes.cancel', $commande->id) }}" class="mt-2">
             @csrf
             @method('PUT')
